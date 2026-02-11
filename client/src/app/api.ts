@@ -29,3 +29,15 @@ export const evaluateAnswer = async (question: string, ideal: string, student: s
   });
   return res.data;
 };
+
+export const uploadResume = async (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await api.post('/resume/upload', formData);
+  return res.data;
+};
+
+export const getQuestionByTopic = async (topic: string, type: 'theory' | 'coding') => {
+  const res = await api.get(`/questions/search?topic=${topic}&type=${type}`);
+  return res.data;
+};

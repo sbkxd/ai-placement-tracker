@@ -8,6 +8,11 @@ from database import engine, get_db
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi import UploadFile, File
+import audio_service
+import shutil
+import os
+
 # Create Tables
 models.Base.metadata.create_all(bind=engine)
 
@@ -84,3 +89,61 @@ def evaluate_answer(submission: schemas.AnswerSubmission):
         score=result["score"],
         feedback=result["feedback"]
     )
+    
+@app.post("/interview/analyze-audio")
+async def analyze_audio(file: UploadFile = File(...)):
+    # Save the uploaded file temporarily
+    temp_path = f"temp_{file.filename}"
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Analyze it
+    analysis = audio_service.analyze_audio_transcription(temp_path)
+    
+    # Clean up file
+    os.remove(temp_path)
+    
+    return analysis
+
+@app.get("/questions/random-theory")
+def get_random_theory(db: Session = Depends(get_db)):
+    import random
+    questions = db.query(models.TheoryQuestion).all()
+    return random.choice(questions) if questions else {}
+
+@app.get("/questions/random-coding")
+def get_random_coding(db: Session = Depends(get_db)):
+    import random
+    questions = db.query(models.CodingQuestion).all()
+    return random.choice(questions) if questions else {}
+
+import resume_service
+
+@app.post("/resume/upload")
+async def upload_resume(file: UploadFile = File(...)):
+    temp_path = f"temp_{file.filename}"
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    text = resume_service.extract_text_from_pdf(temp_path)
+    suggestions = resume_service.suggest_topics(text)
+    
+    os.remove(temp_path)
+    return {"suggestions": suggestions}
+
+@app.get("/questions/search")
+def search_questions(topic: str, type: str, db: Session = Depends(get_db)):
+    if type == "theory":
+        # Search in subject or question text
+        question = db.query(models.TheoryQuestion).filter(
+            (models.TheoryQuestion.subject.ilike(f"%{topic}%")) | 
+            (models.TheoryQuestion.question_text.ilike(f"%{topic}%"))
+        ).first()
+    else:
+        # Search in title or description
+        question = db.query(models.CodingQuestion).filter(
+            (models.CodingQuestion.title.ilike(f"%{topic}%")) | 
+            (models.CodingQuestion.description.ilike(f"%{topic}%"))
+        ).first()
+    
+    return question or {}

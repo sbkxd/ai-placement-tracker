@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Floa
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
+from sqlalchemy.sql import func
 
 class User(Base):
     __tablename__ = "users"
@@ -36,3 +37,28 @@ class MockInterview(Base):
 
     user_id = Column(Integer, ForeignKey("users.id"))
     student = relationship("User", back_populates="interviews")
+    
+class TheoryQuestion(Base):
+    __tablename__ = "theory_questions"
+    id = Column(Integer, primary_key=True, index=True)
+    subject = Column(String) # e.g., "Operating Systems"
+    question_text = Column(Text)
+    ideal_answer = Column(Text)
+
+class CodingQuestion(Base):
+    __tablename__ = "coding_questions"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    description = Column(Text)
+    initial_code = Column(Text) # e.g., "def solution(n):"
+    test_case_input = Column(String)
+    expected_output = Column(String)
+
+class Attempt(Base):
+    __tablename__ = "attempts"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer)
+    type = Column(String)    # "Technical" or "Mock"
+    score = Column(Integer)
+    subject = Column(String) # e.g., "Python" or "OS"
+    date = Column(DateTime, default=func.now())
